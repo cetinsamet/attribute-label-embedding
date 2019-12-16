@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export DATASET='CUB'
-export MODE='test' #'test'
+export MODE='validation' #'test'
 export CODE_DIR="."
 export DATA_DIR="./datasets/CUBP" # required (preprocessed CUB directory!)
 
