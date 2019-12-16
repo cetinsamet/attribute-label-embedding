@@ -163,7 +163,7 @@ for trial, seed in enumerate(seeds):
 				h_score = (2 * acc_g_seen * acc_g_unseen) / (acc_g_seen + acc_g_unseen)
 			print("H-Score                  : %f" % h_score)
 
-		accs[trial, epoch_idx, :] = acc_zsl, acc_g_seen, acc_g_unseen, h_score # <- save accuracy values
+			accs[trial, epoch_idx, :] = acc_zsl, acc_g_seen, acc_g_unseen, h_score # <- save accuracy values
 
 zsl_mean   = accs[:, :, 0].mean(axis=0)
 zsl_std    = accs[:, :, 0].std(axis=0)
