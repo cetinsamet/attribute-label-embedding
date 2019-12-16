@@ -39,7 +39,7 @@ def evaluate(model, x, y, attrs):
 		n_sample 	= len(idx_sample)
 		
 		y_sample_  	= y_[idx_sample]
-		y_sample   	= y[idx_sample]
+		y_sample   	= y[idx_sample].long()
 
 		scr_sample	= torch.sum(y_sample_ == y_sample).item()
 		acc_sample	= scr_sample / n_sample
