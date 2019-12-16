@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export DATASET='AWA1'
-export MODE='test' #'validation'
+export MODE='validation' #'test'
 export CODE_DIR="."
 export DATA_DIR="./datasets/AWA1P" # required (preprocessed CUB directory!)
 
