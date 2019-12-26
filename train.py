@@ -92,7 +92,7 @@ for trial, seed in enumerate(seeds):
 									lr 			= args.lr,
 									weight_decay= args.wd)
 	else:
-		raise NotImplemented
+		raise NotImplementedError
 
 	scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay) # <- lr_schedular
 
@@ -167,10 +167,10 @@ for trial, seed in enumerate(seeds):
 
 zsl_mean   = accs[:, :, 0].mean(axis=0)
 zsl_std    = accs[:, :, 0].std(axis=0)
-gzslu_mean = accs[:, :, 1].mean(axis=0)
-gzslu_std  = accs[:, :, 1].std(axis=0)
-gzsls_mean = accs[:, :, 2].mean(axis=0)
-gzsls_std  = accs[:, :, 2].std(axis=0)
+gzsls_mean = accs[:, :, 1].mean(axis=0)
+gzsls_std  = accs[:, :, 1].std(axis=0)
+gzslu_mean = accs[:, :, 2].mean(axis=0)
+gzslu_std  = accs[:, :, 2].std(axis=0)
 gzslh_mean = accs[:, :, 3].mean(axis=0)
 gzslh_std  = accs[:, :, 3].std(axis=0)
 
