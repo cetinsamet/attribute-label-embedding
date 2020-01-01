@@ -26,6 +26,11 @@ class Dataset():
 		self.mode 		= mode
 
 		self.attr = loadmat(join(self.data_dir, "attributes.mat"))['attributes'].astype('float32')
+		### !!!!! 
+		#attr_mat_file_name 	= "" #"feats.mat" (?)
+		#attr_mat_key_name	= "" #'PredicateMatrix' (?)
+		#self.attributes = loadmat(join(data_dir, attr_mat_file_name))[attr_mat_key_name].astype('float32')
+		### !!!!! 
 
 		path = join(self.data_dir, self.mode)
 
