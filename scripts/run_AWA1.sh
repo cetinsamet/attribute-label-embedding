@@ -3,7 +3,7 @@
 export DATASET='AWA1'
 export MODE='validation' #'test'
 export CODE_DIR="."
-export DATA_DIR="./datasets/AWA1P" # required (preprocessed CUB directory!)
+export DATA_DIR="./datasets/AWA1P" # required (preprocessed AWA1 directory!)
 
 # set params
 source ${CODE_DIR}/scripts/AWA1_hps.sh

@@ -1,4 +1,4 @@
-# set CUB hyper-parameters
+# set AWA2 hyper-parameters
 # classifier params
 export OPTIM_TYPE='adam' 	# not optimal value
 export LR=1e-4				# not optimal value

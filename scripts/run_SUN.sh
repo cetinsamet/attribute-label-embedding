@@ -1,12 +1,12 @@
 #!/bin/bash
 
-export DATASET='CUB'
+export DATASET='SUN'
 export MODE='validation' #'test'
 export CODE_DIR="."
-export DATA_DIR="./datasets/CUBP" # required (preprocessed CUB directory!)
+export DATA_DIR="./datasets/SUNP" # required (preprocessed SUN directory!)
 
 # set params
-source ${CODE_DIR}/scripts/CUB_hps.sh
+source ${CODE_DIR}/scripts/SUN_hps.sh
 
 #train ALE
 python ${CODE_DIR}/train.py \
