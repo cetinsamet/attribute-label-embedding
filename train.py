@@ -36,9 +36,11 @@ parser.add_argument('--batch_size', type=int)
 args = parser.parse_args()
 
 if torch.cuda.is_available():
-	device = 'cuda'
+	device_type = 'cuda'
+	device 		= torch.device(device_type)
 else: # CUDA IS NOT AVAILABLE
-	device = 'cpu'
+	device_type = 'cpu'
+	device 		= torch.device(device_type)
 	import psutil
 	n_cpu = psutil.cpu_count()
 	n_cpu_to_use = n_cpu // 4
@@ -46,28 +48,42 @@ else: # CUDA IS NOT AVAILABLE
 	os.environ['MKL_NUM_THREADS'] = str(n_cpu_to_use)
 	os.environ['KMP_AFFINITY'] = 'compact'
 
-print("DEVICE: %s" % device)
+if args.mode == 'test': verbose = True
+else: verbose = False
 
-dset 			= Dataset(args.data_dir, args.mode)
+if verbose:
+	print("%s dataset running on %s mode with %s device" % (args.dataset.upper(), args.mode.upper(), device_type.upper()))
 
-x_seen_train	= FN(dset.x_seen_train).to(device)
-y_seen_train 	= FN(dset.y_seen_train).to(device)
-y_seen_train_ix = FN(index_labels(dset.y_seen_train, dset.seen_classes)).to(device)
+dset 		= Dataset(args.dataset, args.data_dir, args.mode)
 
-x_seen_test 	= FN(dset.x_seen_test).to(device)
-y_seen_test 	= FN(dset.y_seen_test).to(device)
+x_s_train	= FN(dset.x_s_train).to(device)
+y_s_train 	= FN(dset.y_s_train).to(device)
+y_s_train_ix = FN(index_labels(dset.y_s_train, dset.s_class)).to(device)
 
-x_unseen_test 	= FN(dset.x_unseen_test).to(device)
-y_unseen_test 	= FN(dset.y_unseen_test).to(device)
-y_unseen_test_ix = FN(index_labels(dset.y_unseen_test, dset.unseen_classes)).to(device)
+x_s_test 	= FN(dset.x_s_test).to(device)
+y_s_test 	= FN(dset.y_s_test).to(device)
 
-attrs 			= FN(dset.attributes).to(device)
-seen_attrs 		= FN(dset.seen_attributes).to(device)
-unseen_attrs 	= FN(dset.unseen_attributes).to(device)
+x_u_test 	= FN(dset.x_u_test).to(device)
+y_u_test 	= FN(dset.y_u_test).to(device)
+y_u_test_ix = FN(index_labels(dset.y_u_test, dset.u_class)).to(device)
 
-n_seen_train 	= x_seen_train.shape[0]
-n_seen_test 	= x_seen_test.shape[0]
-n_unseen_test 	= x_unseen_test.shape[0]
+attr 		= FN(dset.attr).to(device)
+s_attr 		= FN(dset.s_attr).to(device)
+u_attr 		= FN(dset.u_attr).to(device)
+
+n_s_train 	= len(x_s_train)
+
+n_class 	= len(attr)
+n_s_class 	= len(s_attr)
+n_u_class	= len(u_attr)
+
+if verbose:
+	print("Seen train 	:", x_s_train.size())
+	print("Seen test 	:", x_s_test.size())
+	print("Unseen test 	:", x_u_test.size())
+	print("Attrs 		:", attr.size())
+	print("Seen Attrs 	:", s_attr.size())
+	print("Unseen Attrs	:", u_attr.size())
 
 seeds = [123]
 #seeds = [123, 16, 26, 149, 1995] # <- Train several times randomly
@@ -80,9 +96,14 @@ for trial, seed in enumerate(seeds):
 	np.random.seed(seed)
 	torch.manual_seed(seed)
 
-	clf = Compatibility(d_in = dset.d_ft, d_out = dset.d_attr).to(device) 	# <- classifier
-	ce_loss = torch.nn.CrossEntropyLoss(reduction='sum') 					# <- loss
+	# init classifier
+	clf = Compatibility(d_in 	= dset.d_ft, 
+						d_out 	= dset.d_attr).to(device)
 
+	# init loss
+	ce_loss = torch.nn.CrossEntropyLoss()
+
+	# init optimizer
 	if args.optim_type == 'adam':
 		optimizer = torch.optim.Adam(params 	= clf.parameters(),
 									lr 			= args.lr,
@@ -94,65 +115,63 @@ for trial, seed in enumerate(seeds):
 	else:
 		raise NotImplementedError
 
-	scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay) # <- lr_schedular
+	# init schedular
+	#scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay) # <- lr_schedular
 
-	data        = TensorDataset(x_seen_train, y_seen_train_ix)
+	data        = TensorDataset(x_s_train, y_s_train_ix)
 	data_loader	= DataLoader(data, batch_size=args.batch_size, shuffle=True, drop_last=False)
 
 	for epoch_idx in range(args.n_epoch):
 
-		clf.train() # Train mode: ON
+		clf.train() # Classifer train mode: ON
 
 		running_loss = 0.
 
 		for x, y in data_loader: # (x, y) <-> (image feature, image label)
 
-			y_ 			= clf(x, seen_attrs) 	# <- forward pass
+			y_ 			= clf(x, s_attr)		# <- forward pass
 			batch_loss 	= ce_loss(y_, y)		# <- calculate loss
 
 			optimizer.zero_grad() 	# <- set gradients to zero
 			batch_loss.backward()	# <- calculate gradients
 			optimizer.step() 		# <- update weights
 
-			running_loss += batch_loss.item() # <- cumulative loss
+			running_loss += batch_loss.item() * args.batch_size # <- cumulative loss
 
-		scheduler.step() # <- update learning rate params
+		#scheduler.step() # <- update schedular
 
-		epoch_loss = running_loss / n_seen_train # <- calculate epoch loss
+		epoch_loss = running_loss / n_s_train # <- calculate epoch loss
 
 		print("Epoch %4d\tLoss : %s" % (epoch_idx + 1, epoch_loss))
 		
-		if math.isnan(epoch_loss): exit() # if loss is NAN, terminate!
+		if math.isnan(epoch_loss): continue # if loss is NAN, skip!
 
 		if (epoch_idx + 1) % 1 == 0:
 
-			clf.eval() # Evaluation mode: ON
+			clf.eval() # Classifier evaluation mode: ON
 
 			# ----------------------------------------------------------------------------------------------- #
 			# ZERO-SHOT ACCURACY
 			acc_zsl = evaluate(model = clf,
-							   x 	 = x_unseen_test,
-							   y 	 = y_unseen_test_ix,
-						  	   attrs = unseen_attrs)
-			print("Zero-Shot acc            : %f" % acc_zsl)
+							   x 	 = x_u_test,
+							   y 	 = y_u_test_ix,
+						  	   attrs = u_attr)
 			# ------------------------------------------------------- #
 			# * ----- * ----- * ----- * ----- * ----- * ----- * ----- *
 			# ------------------------------------------------------- #
 			# GENERALIZED SEEN ACCURACY
 			acc_g_seen = evaluate(model	= clf,
-								  x 	= x_seen_test,
-								  y 	= y_seen_test,
-								  attrs = attrs)
-			print("Generalized Seen acc     : %f" % acc_g_seen)
+								  x 	= x_s_test,
+								  y 	= y_s_test,
+								  attrs = attr)
 			# ------------------------------------------------------- #
 			# * ----- * ----- * ----- * ----- * ----- * ----- * ----- *
 			# ------------------------------------------------------- #
 			# GENERALIZED UNSEEN ACCURACY
 			acc_g_unseen = evaluate(model = clf,
-									x 	  = x_unseen_test,
-									y 	  = y_unseen_test,
-									attrs = attrs)
-			print("Generalized Unseen acc   : %f" % acc_g_unseen)
+									x 	  = x_u_test,
+									y 	  = y_u_test,
+									attrs = attr)
 			# ------------------------------------------------------- #
 			# * ----- * ----- * ----- * ----- * ----- * ----- * ----- *
 			# ------------------------------------------------------- #
@@ -161,9 +180,16 @@ for trial, seed in enumerate(seeds):
 				h_score = 0.
 			else:
 				h_score = (2 * acc_g_seen * acc_g_unseen) / (acc_g_seen + acc_g_unseen)
-			print("H-Score                  : %f" % h_score)
-
+			# ----------------------------------------------------------------------------------------------- #
+			
 			accs[trial, epoch_idx, :] = acc_zsl, acc_g_seen, acc_g_unseen, h_score # <- save accuracy values
+
+			if verbose:
+				print("Zero-Shot acc            : %f" % acc_zsl)
+				print("Generalized Seen acc     : %f" % acc_g_seen)
+				print("Generalized Unseen acc   : %f" % acc_g_unseen)
+				print("H-Score                  : %f" % h_score)
+
 
 zsl_mean   = accs[:, :, 0].mean(axis=0)
 zsl_std    = accs[:, :, 0].std(axis=0)
